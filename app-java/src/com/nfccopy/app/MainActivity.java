@@ -186,6 +186,7 @@ public class MainActivity extends Activity {
         if (!NfcAdapter.ACTION_TAG_DISCOVERED.equals(action) &&
             !NfcAdapter.ACTION_TECH_DISCOVERED.equals(action) &&
             !NfcAdapter.ACTION_NDEF_DISCOVERED.equals(action)) return;
+        if (!isReadMode) return;
 
         Tag tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
         if (tag == null) return;
