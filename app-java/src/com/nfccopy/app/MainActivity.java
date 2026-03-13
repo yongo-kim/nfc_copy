@@ -159,7 +159,8 @@ public class MainActivity extends Activity {
     private void enableForegroundDispatch() {
         if (nfcAdapter == null) return;
         Intent intent = new Intent(this, getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        PendingIntent pi = PendingIntent.getActivity(this, 0, intent, 0);
+        int flags = (android.os.Build.VERSION.SDK_INT >= 31) ? 0x02000000 : 0; // FLAG_MUTABLE
+        PendingIntent pi = PendingIntent.getActivity(this, 0, intent, flags);
         IntentFilter[] filters = new IntentFilter[]{
             new IntentFilter(NfcAdapter.ACTION_TAG_DISCOVERED),
             new IntentFilter(NfcAdapter.ACTION_TECH_DISCOVERED)
