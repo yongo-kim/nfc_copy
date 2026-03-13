@@ -1,0 +1,33 @@
+FROM eclipse-temurin:17-jdk AS builder
+
+# Install Android SDK
+ENV ANDROID_HOME=/opt/android-sdk
+ENV PATH="${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/platform-tools:${PATH}"
+
+RUN apt-get update && apt-get install -y wget unzip && \
+    mkdir -p ${ANDROID_HOME}/cmdline-tools && \
+    wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O /tmp/cmdtools.zip && \
+    unzip -q /tmp/cmdtools.zip -d ${ANDROID_HOME}/cmdline-tools && \
+    mv ${ANDROID_HOME}/cmdline-tools/cmdline-tools ${ANDROID_HOME}/cmdline-tools/latest && \
+    rm /tmp/cmdtools.zip && \
+    yes | sdkmanager --licenses && \
+    sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
+# Install Gradle
+RUN wget -q https://services.gradle.org/distributions/gradle-8.5-bin.zip -O /tmp/gradle.zip && \
+    unzip -q /tmp/gradle.zip -d /opt && \
+    rm /tmp/gradle.zip
+ENV PATH="/opt/gradle-8.5/bin:${PATH}"
+
+WORKDIR /app
+COPY . .
+
+# Create local.properties
+RUN echo "sdk.dir=${ANDROID_HOME}" > local.properties
+
+# Build
+RUN gradle assembleDebug --no-daemon
+
+# Output stage
+FROM scratch AS output
+COPY --from=builder /app/app/build/outputs/apk/debug/*.apk /
