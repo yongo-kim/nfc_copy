@@ -117,6 +117,53 @@ nfc_copy/
 | NfcF | JIS 6319-4 (FeliCa) |
 | NfcV | ISO 15693 (Vicinity) |
 
+## 빌드 및 설치 트러블슈팅
+
+개발 과정에서 발생한 주요 문제와 해결 방법을 정리합니다.
+
+### 1. Play Protect 차단 — "안전하지 않은 앱 차단됨"
+
+- **원인:** `targetSdkVersion`이 23으로 너무 낮아서 Google Play Protect가 설치를 차단
+- **해결:** `targetSdkVersion`을 34로, `minSdkVersion`을 21로 상향
+```xml
+<uses-sdk android:minSdkVersion="21" android:targetSdkVersion="34" />
+```
+
+### 2. NFC 하드웨어 호환성 — "앱이 휴대전화와 호환되지 않아서 설치되지 않았습니다"
+
+- **원인:** `AndroidManifest.xml`에서 NFC 관련 feature를 `required="true"`로 선언하여, NFC가 없거나 HCE를 지원하지 않는 기기에서 설치 불가
+- **해결:** `android.hardware.nfc`와 `android.hardware.nfc.hce` feature를 `required="false"`로 변경
+```xml
+<uses-feature android:name="android.hardware.nfc" android:required="false" />
+<uses-feature android:name="android.hardware.nfc.hce" android:required="false" />
+```
+
+### 3. android:exported 누락 — "패키지가 잘못되어 앱이 설치되지 않았습니다"
+
+- **원인:** Android 12+ (API 31+)에서는 intent-filter가 있는 컴포넌트에 `android:exported` 속성이 필수
+- **해결:** `MainActivity`에 `exported="true"`, `CardDetailActivity`에 `exported="false"` 추가
+```xml
+<activity android:name=".MainActivity" android:exported="true">
+<activity android:name=".CardDetailActivity" android:exported="false">
+```
+
+### 4. PendingIntent 크래시 — Android 12+ 런타임 오류
+
+- **원인:** Android 12+에서는 `PendingIntent` 생성 시 `FLAG_MUTABLE` 또는 `FLAG_IMMUTABLE` 플래그 필수
+- **해결:** NFC foreground dispatch에 사용하는 PendingIntent에 `FLAG_MUTABLE` 적용 (태그 데이터를 런타임에 채워야 하므로 MUTABLE 필요)
+```java
+int flags = (Build.VERSION.SDK_INT >= 31) ? 0x02000000 : 0; // FLAG_MUTABLE
+PendingIntent pi = PendingIntent.getActivity(this, 0, intent, flags);
+```
+
+### 5. NFC 태그 의도치 않은 읽기
+
+- **원인:** `onResume()`에서 항상 foreground dispatch를 활성화하여, + 버튼을 누르지 않아도 NFC 태그를 읽음
+- **해결:** `handleIntent()`에서 `isReadMode` 플래그를 확인하여 + 버튼으로 읽기 모드 진입 시에만 태그 처리
+```java
+if (!isReadMode) return;
+```
+
 ## 참고 사항
 
 - HCE 에뮬레이션은 UID 기반이며, 보안 키가 필요한 카드의 완전한 복제는 불가능합니다
